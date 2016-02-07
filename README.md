@@ -12,12 +12,13 @@ FluentJdbc's key features:
 * big data (scalable, streaming style of batch and select)
 * automatic result to pojo mapping
 * database inspection
+* query listener (for eg logging, auditing, performance measurement)
 
 ```xml
 <dependency>
     <groupId>org.codejargon</groupId>
     <artifactId>fluentjdbc</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.5</version>
 </dependency>
 ```
 Note: requires java 8
@@ -27,7 +28,7 @@ Full documentation on [wiki](https://github.com/zsoltherpai/fluent-jdbc/wiki/Mot
 Latest [javadoc](https://github.com/zsoltherpai/fluent-jdbc/wiki/Javadoc)
 
 #####News#####
-* 1.0.2 released - batching API improvements (accepting Stream and Iterable)
+* 1.0.5 released - query listener (for logging, etc), java.util.Date precision bugfix, convenience method for named params
 
 #####Code examples of common use cases#####
 ######Setting up FluentJdbc######
@@ -90,13 +91,10 @@ query
 ```
 ######Named parameters######
 ```java
-Map<String, Object> namedParams = new HashMap<>();
-namedParams.put("name", "John Doe");
-namedParams.put("address", "Dallas");
-
 query
 	.batch("UPDATE CUSTOMER SET NAME = :name, ADDRESS = :address")
-	.namedParams(namedParams)
+	.namedParam("name", "John Doe")
+	.namedParam("address", "Dallas")
 	.run();
 ```
 
@@ -153,5 +151,28 @@ query.transaction().in(
 ```
 All queries executed in the block will be part of the transaction - in the same thread, based on the same FluentJdbc/ConnectionProvider.
 Exceptions cause rollback. It is possible to use multiple transactions/datasources simultaneously.
+######Query listener######
+A listener provides a callback mechanism called on each FluentJdbc query operation. This allows things like SQL statement logging,
+performance measurement. The following example logs all successful SQL operations along with the time taken to execute them:
+```java
+AfterQueryListener listener = execution -> {
+    if(execution.success()) {
+        log.debug(
+            String.format(
+                "Query took %s ms to execute: %s",
+                execution.executionTimeMs(),
+                execution.sql()
+            )
+        )
+    }
+};
+
+FluentJdbc fluentJdbc = new FluentJdbcBuilder()
+    // other configuration
+    .afterQueryListener(listener)
+    .build();
+
+// run queries
+```
 
 Refer to the [full documentation](https://github.com/zsoltherpai/fluent-jdbc/wiki/Motivation) for more details and code examples.
